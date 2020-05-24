@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel;
 using System.Diagnostics;
 using System.Linq;
 using System.Reflection;
@@ -50,6 +49,7 @@ namespace WpfDashboardControl.Controls
         #region Private Fields
 
         private const int ScrollIncrement = 15;
+        private readonly PropertyChangeNotifier _itemsSourceChangeNotifier;
         private readonly List<WidgetHost> _widgetHosts = new List<WidgetHost>();
         private RowAndColumn _closestRowColumn;
         private ScrollViewer _dashboardScrollViewer;
@@ -148,7 +148,8 @@ namespace WpfDashboardControl.Controls
             Loaded += DashboardHost_Loaded;
             Unloaded += DashboardHost_Unloaded;
 
-            ItemsSourceChangedEventSubscriber();
+            _itemsSourceChangeNotifier = new PropertyChangeNotifier(this, ItemsSourceProperty);
+            _itemsSourceChangeNotifier.ValueChanged += ItemsSource_Changed;
         }
 
         #endregion Public Constructors
@@ -169,6 +170,8 @@ namespace WpfDashboardControl.Controls
 
             widgetHost.DragStarted -= WidgetHost_DragStarted;
             _widgetHosts.Remove(widgetHost);
+
+            FixArrangements();
         }
 
         /// <summary>
@@ -382,6 +385,7 @@ namespace WpfDashboardControl.Controls
         {
             Loaded -= DashboardHost_Loaded;
 
+            SizeChanged += DashboardHost_SizeChanged;
             PreviewDragOver += DashboardHost_PreviewDragOver;
         }
 
@@ -427,15 +431,22 @@ namespace WpfDashboardControl.Controls
             // We do this by getting the width of the host and then divide this by the span + 1
             // In a 1x1 widget this would essentially give us the half way point to which would change the _closestRowColumn
             // In a larger widget (2x2) this would give us the point at 1/3 of the size ensuring the widget can get to its destination more seamlessly
-            var addToPositionX = draggingWidgetHost.ActualWidth /
-                                (GetSpans(_draggingWidgetBase.WidgetSize).ColumnSpan + 1);
-
-            var addToPositionY = draggingWidgetHost.ActualHeight /
-                                 (GetSpans(_draggingWidgetBase.WidgetSize).RowSpan + 1);
+            var draggingWidgetSpans = GetSpans(_draggingWidgetBase.WidgetSize);
+            var addToPositionX = draggingWidgetHost.ActualWidth / (draggingWidgetSpans.ColumnSpan + 1);
+            var addToPositionY = draggingWidgetHost.ActualHeight / (draggingWidgetSpans.RowSpan + 1);
 
             // Get the closest row/column to the adorner "imaginary" position
             _closestRowColumn =
                 GetClosestRowColumn(new Point(adornerPosition.X + addToPositionX, adornerPosition.Y + addToPositionY));
+
+            // Do a single check if the closestRow has moved more than a single row. In this case we want to rearrange and recheck the ClosestRowColumn
+            var rowMovement = _draggingWidgetBase.RowIndex - _closestRowColumn.Row;
+            if (rowMovement < -1 || rowMovement > 1)
+            {
+                FixArrangements();
+                _closestRowColumn =
+                    GetClosestRowColumn(new Point(adornerPosition.X + addToPositionX, adornerPosition.Y + addToPositionY));
+            }
 
             // Use the canvas to draw a square around the _closestRowColumn to indicate where the _draggingWidgetHost will be when mouse is released
             var top = _closestRowColumn.Row < 0 ? 0 : _closestRowColumn.Row * _widgetHostMinimumSize.Height;
@@ -457,8 +468,51 @@ namespace WpfDashboardControl.Controls
                 _draggingWidgetBase.ColumnIndex == _closestRowColumn.Column)
                 return;
 
-            // Arrange the other WidgetHosts around the _draggingHost
-            SetAndArrange(_draggingHost, _closestRowColumn, null, true);
+            // Get all the widgets in the path of where the _dragging host will be set
+            var movingWidgets = GetWidgetMoveList(_draggingHost, _closestRowColumn, null)
+                .OrderBy(widgetHost =>
+                {
+                    var widgetBase = (WidgetBase)widgetHost.DataContext;
+                    return widgetBase.RowIndex;
+                });
+
+            // Set the _dragging host into its dragging position
+            SetRow(_draggingHost, _closestRowColumn.Row);
+            SetColumn(_draggingHost, _closestRowColumn.Column);
+
+            // Move the movingWidgets down in rows the same amount of the _dragging hosts row span
+            // unless there is a widget already there in that case increment until there isn't. We
+            // used the OrderBy on the movingWidgets to make this work against widgets that have
+            // already moved
+            foreach (var widgetHost in movingWidgets)
+            {
+                var widgetBase = (WidgetBase)widgetHost.DataContext;
+                var widgetSpans = GetSpans(widgetBase.WidgetSize);
+
+                // Use the initial amount the dragging widget row size is
+                var rowIncrease = draggingWidgetSpans.RowSpan;
+
+                Debug.Assert(widgetBase.RowIndex != null, "widgetBase.RowIndex != null");
+                Debug.Assert(widgetBase.ColumnIndex != null, "widgetBase.ColumnIndex != null");
+
+                // Find a row to move it
+                while (WidgetAtLocation(widgetSpans, new RowAndColumn((int)widgetBase.RowIndex + rowIncrease, (int)widgetBase.ColumnIndex)).Count > 0)
+                    rowIncrease++;
+
+                SetRow(widgetHost, (int)widgetBase.RowIndex + rowIncrease);
+                SetColumn(widgetHost, (int)widgetBase.ColumnIndex);
+            }
+
+            FixArrangements();
+        }
+
+        private void DashboardHost_SizeChanged(object sender, SizeChangedEventArgs e)
+        {
+            if (!EditMode)
+                return;
+
+            RemoveExcessGridsAndColumns(GridEditingBackground);
+            FillBackgroundGrid();
         }
 
         /// <summary>
@@ -469,10 +523,11 @@ namespace WpfDashboardControl.Controls
         private void DashboardHost_Unloaded(object sender, RoutedEventArgs e)
         {
             Unloaded -= DashboardHost_Unloaded;
+            SizeChanged -= DashboardHost_SizeChanged;
             PreviewDragOver -= DashboardHost_PreviewDragOver;
 
-            // Watch if the ItemsSource changes and ensure the ItemsSource is of type ICollection<WidgetBase>
-            ItemsSourceChangedEventSubscriber(false);
+            if (_itemsSourceChangeNotifier != null)
+                _itemsSourceChangeNotifier.ValueChanged -= ItemsSource_Changed;
         }
 
         /// <summary>
@@ -496,73 +551,39 @@ namespace WpfDashboardControl.Controls
             if (EditMode)
             {
                 // We need to make our entire editing background fill the screen with gray boxes if they aren't already
-                var visibleColumns = GetFullyVisibleGridColumn() + 1;
-                var visibleRows = GetFullyVisibleGridRow() + 1;
-
-                while (GridEditingBackground.ColumnDefinitions.Count < visibleColumns)
-                    AddGridColumnDefinition(GridEditingBackground);
-
-                while (GridEditingBackground.RowDefinitions.Count < visibleRows)
-                    AddGridRowDefinition(GridEditingBackground);
+                FillBackgroundGrid();
 
                 EditModeEnabled?.Execute(null);
                 return;
             }
 
-            // We're getting out of edit mode so reduce down the columns and rows to what is contained in them
-            var rowAndColumnMax = GetMaxRowsAndColumns();
-
-            // Local method to remove any excess row definitions for the provided grid
-            void RemoveExcessRowDefinitions(Grid grid)
-            {
-                for (var i = grid.RowDefinitions.Count - 1; i >= 0; i--)
-                {
-                    if (i < rowAndColumnMax.Row)
-                        return;
-
-                    grid.RowDefinitions.Remove(grid.RowDefinitions[i]);
-                }
-            }
-
-            // Local method to remove any excess column definitions for the provided grid
-            void RemoveExcessColumnDefinitions(Grid grid)
-            {
-                for (var i = grid.ColumnDefinitions.Count - 1; i >= 0; i--)
-                {
-                    if (i < rowAndColumnMax.Column)
-                        return;
-
-                    grid.ColumnDefinitions.Remove(grid.ColumnDefinitions[i]);
-                }
-            }
-
-            // We get all the children to remove from the background grid by seeing if any of those
-            // children are in places that the main grid doesn't have content
-            var removeBorders = GridEditingBackground.Children.OfType<Border>().Where(child =>
-            {
-                var gridRow = Grid.GetRow(child);
-                var gridColumn = Grid.GetColumn(child);
-
-                return gridRow >= rowAndColumnMax.Row || gridColumn >= rowAndColumnMax.Column;
-            }).ToArray();
-
-            // We have to manually remove the children from the background grid
-            for (var i = removeBorders.Length - 1; i >= 0; i--)
-                GridEditingBackground.Children.Remove(removeBorders[i]);
-
-            // We then remove all the extra row definitions we no longer need
-            RemoveExcessRowDefinitions(GridEditingBackground);
-
-            // Then we remove all the extra column definitions we no longer need
-            RemoveExcessColumnDefinitions(GridEditingBackground);
-
-            // We need to then remove all the extra WidgetsGridHost row definitions where there is no content
-            RemoveExcessRowDefinitions(WidgetsGridHost);
-
-            // Lastly, we remove the column definitions for the WidgetsGridHost where there is no content
-            RemoveExcessColumnDefinitions(WidgetsGridHost);
+            // We then need to remove all the extra row and column definitions we no longer need
+            RemoveExcessGridsAndColumns(GridEditingBackground);
+            RemoveExcessGridsAndColumns(WidgetsGridHost);
 
             EditingComplete?.Execute(null);
+        }
+
+        private void FillBackgroundGrid()
+        {
+            var visibleColumns = GetFullyVisibleGridColumn() + 1;
+            var visibleRows = GetFullyVisibleGridRow() + 1;
+
+            while (GridEditingBackground.ColumnDefinitions.Count < visibleColumns)
+                AddGridColumnDefinition(GridEditingBackground);
+
+            while (GridEditingBackground.RowDefinitions.Count < visibleRows)
+                AddGridRowDefinition(GridEditingBackground);
+        }
+
+        private void FixArrangements()
+        {
+            var arrangementNecessary = true;
+
+            //Need to check for empty spots to see if widgets in rows down from it can possible be placed in those empty spots
+            //Once there are no more available to move we set arrangementNecessary to false and we're done
+            while (arrangementNecessary)
+                arrangementNecessary = ReArrangeFirstEmptySpot();
         }
 
         /// <summary>
@@ -586,6 +607,9 @@ namespace WpfDashboardControl.Controls
             // We need to set any negatives to 0 since we can't place anything off screen
             realClosestRow = realClosestRow < 0 ? 0 : realClosestRow;
             realClosestColumn = realClosestColumn < 0 ? 0 : realClosestColumn;
+
+            if (_draggingWidgetBase.RowIndex == realClosestRow && _draggingWidgetBase.ColumnIndex == realClosestColumn)
+                return new RowAndColumn(realClosestRow, realClosestColumn);
 
             // Now we need to get an array of the widgets list that contains
             // the entire list without the current _draggingHost
@@ -632,12 +656,33 @@ namespace WpfDashboardControl.Controls
             if (realClosestRow >= lastRowForColumn)
                 return new RowAndColumn(lastRowForColumn, realClosestColumn);
 
+            var widgetAtLocation =
+                WidgetAtLocation(GetSpans(_draggingWidgetBase.WidgetSize),
+                    new RowAndColumn(realClosestRow, realClosestColumn)).Where(widget => widget != _draggingHost).ToArray();
+
+            // Check if all widgetAtLocation's are precisely placed within the bounds we are trying to move into
+            // and if not all then return back the current position of the draggingWidget
+            if (widgetAtLocation.Length > 0 && widgetAtLocation.All(widgetHost =>
+            {
+                var widgetContext = (WidgetBase)widgetHost.DataContext;
+                return widgetContext.RowIndex != realClosestRow;
+            }))
+            {
+                Debug.Assert(_draggingWidgetBase.RowIndex != null, "_draggingWidgetBase.RowIndex != null");
+                Debug.Assert(_draggingWidgetBase.ColumnIndex != null, "_draggingWidgetBase.ColumnIndex != null");
+                return new RowAndColumn((int)_draggingWidgetBase.RowIndex, (int)_draggingWidgetBase.ColumnIndex);
+            }
+
+            var potentialMovingWidgets =
+                GetWidgetMoveList(_draggingHost, new RowAndColumn(realClosestRow, realClosestColumn), null);
+
             // The adorner position is within other widgets. We need to see if the row(s) above the closest are available
             // to fit the draggingHost into it and place it there if we can.
             RowAndColumn foundBetterSpot = null;
             for (var i = realClosestRow - 1; i >= 0; i--)
             {
                 var rowAndColumnToCheck = new RowAndColumn(i, realClosestColumn);
+
                 if (WidgetAtLocation(new RowSpanColumnSpan(1, 1), rowAndColumnToCheck)
                     .Where(widget => widget != _draggingHost)
                     .ToArray().Length > 0)
@@ -645,7 +690,20 @@ namespace WpfDashboardControl.Controls
 
                 var widgetsAtRealLocation = WidgetAtLocation(draggingBaseSpans,
                         new RowAndColumn(realClosestRow, realClosestColumn))
-                    .Where(widget => widget != _draggingHost)
+                    .Where(widget =>
+                    {
+                        if (widget == _draggingHost)
+                            return false;
+
+                        if (potentialMovingWidgets.IndexOf(widget) < 0)
+                            return true;
+
+                        var widgetContext = (WidgetBase)widget.DataContext;
+                        var widgetNewRow = widgetContext.RowIndex + draggingBaseSpans.RowSpan;
+
+                        return widgetNewRow >= realClosestRow &&
+                               widgetNewRow <= realClosestRow + draggingBaseSpans.RowSpan;
+                    })
                     .ToArray();
 
                 // We need to reverse loop from the realClosestRow looking for blank/open spots
@@ -753,6 +811,9 @@ namespace WpfDashboardControl.Controls
                 })
                 .ToArray();
 
+            if (widgetsRowsAndColumns.Length == 0)
+                return new RowAndColumn(1, 1);
+
             // Need to get the max row and max columns from the list of RowAndColumns
             var maxRows = widgetsRowsAndColumns
                 .Select(rowColumn => rowColumn.Row)
@@ -816,6 +877,116 @@ namespace WpfDashboardControl.Controls
         }
 
         /// <summary>
+        /// Recursively gets all the widgets in the path of the provided widgetHost into a list.
+        /// </summary>
+        /// <param name="widgetHost">The widget host.</param>
+        /// <param name="rowAndColumnPlacement">The row and column placement.</param>
+        /// <param name="widgetsThatNeedToMove">The widgets that need to move.</param>
+        /// <returns>List&lt;WidgetHost&gt;.</returns>
+        private List<WidgetHost> GetWidgetMoveList(WidgetHost widgetHost, RowAndColumn rowAndColumnPlacement, List<WidgetHost> widgetsThatNeedToMove)
+        {
+            if (widgetsThatNeedToMove == null)
+                widgetsThatNeedToMove = new List<WidgetHost>();
+
+            var widgetBase = (WidgetBase)widgetHost.DataContext;
+            Debug.Assert(widgetBase.RowIndex != null, "widgetBase.RowIndex != null");
+
+            // Need to get the widgetHost spans so we know the size
+            var widgetSpans = GetSpans(widgetBase.WidgetSize);
+
+            var widgetsAtLocation = new List<WidgetHost>();
+
+            // If the widgetHost is the _draggingHost then we only need to get the direct widgets that occupy the
+            // provided rowAndColumnPlacement
+            if (widgetHost == _draggingHost)
+            {
+                widgetsAtLocation
+                    .AddRange(WidgetAtLocation(widgetSpans, rowAndColumnPlacement)
+                        .Where(widget => widget != widgetHost)
+                        .ToList());
+            }
+            else
+            {
+                // If we're a widget at the designated widgetHost we need to check how many spaces
+                // we're moving and check each widget that could potentially be in those spaces
+                var widgetRowMovementCount = rowAndColumnPlacement.Row - widgetBase.RowIndex + 1;
+
+                for (var i = 0; i < widgetRowMovementCount; i++)
+                {
+                    widgetsAtLocation
+                        .AddRange(WidgetAtLocation(widgetSpans,
+                            new RowAndColumn((int)widgetBase.RowIndex + i, rowAndColumnPlacement.Column)));
+                }
+            }
+
+            // If there aren't any widgets at the location then just return the list we've been maintaining
+            if (widgetsAtLocation.Count < 1)
+                return widgetsThatNeedToMove.Distinct().ToList();
+
+            // Since we have widgets at the designated location we need add to the list any widgets that
+            // could potentially move as a result of the widgetHost movement
+            for (var widgetAtLocationIndex = 0;
+                widgetAtLocationIndex < widgetsAtLocation.Count;
+                widgetAtLocationIndex++)
+            {
+                // If we're already tracking the widget then continue to the next
+                if (widgetsThatNeedToMove.IndexOf(widgetsAtLocation[widgetAtLocationIndex]) >= 0)
+                    continue;
+
+                var widgetAtLocationBase = (WidgetBase)widgetsAtLocation[widgetAtLocationIndex].DataContext;
+
+                Debug.Assert(widgetAtLocationBase.ColumnIndex != null, "widgetAtLocationBase.ColumnIndex != null");
+
+                // Need to recursively check if any widgets that are now in the place that this widget was also get moved down to
+                // make room
+                var proposedRowAndColumn = new RowAndColumn(rowAndColumnPlacement.Row + widgetSpans.RowSpan,
+                    (int)widgetAtLocationBase.ColumnIndex);
+
+                // Get the widgets at the new location this one is moving to
+                var currentWidgetsAtNewLocation =
+                    WidgetAtLocation(GetSpans(widgetAtLocationBase.WidgetSize), proposedRowAndColumn)
+                        .Where(widget =>
+                        {
+                            if (widget == widgetsAtLocation[widgetAtLocationIndex])
+                                return false;
+
+                            var widgetLocationIndex = widgetsAtLocation.IndexOf(widget);
+
+                            // We check here if the potential widget is already scheduled to move and return false in that case
+                            return widgetLocationIndex >= 0 && widgetLocationIndex <= widgetAtLocationIndex;
+                        })
+                        .ToList();
+
+                // If there are no widgets at the location then we can just add the widget and continue
+                if (currentWidgetsAtNewLocation.Count < 1)
+                {
+                    widgetsThatNeedToMove.Add(widgetsAtLocation[widgetAtLocationIndex]);
+                    GetWidgetMoveList(widgetsAtLocation[widgetAtLocationIndex], proposedRowAndColumn,
+                        widgetsThatNeedToMove);
+                    continue;
+                }
+
+                // We need to get the max row span or size we're dealing with to offset the change
+                var maxAdditionalRows = currentWidgetsAtNewLocation
+                    .Select(widget =>
+                    {
+                        var atLocationBase = (WidgetBase)widget.DataContext;
+                        return GetSpans(atLocationBase.WidgetSize).RowSpan;
+                    })
+                    .Max();
+
+                // Add the widget to the list and move to the next item
+                widgetsThatNeedToMove.Add(widgetsAtLocation[widgetAtLocationIndex]);
+                GetWidgetMoveList(widgetsAtLocation[widgetAtLocationIndex],
+                    new RowAndColumn(proposedRowAndColumn.Row + maxAdditionalRows, proposedRowAndColumn.Column),
+                    widgetsThatNeedToMove);
+            }
+
+            // Return the list we've been maintaining
+            return widgetsThatNeedToMove.Distinct().ToList();
+        }
+
+        /// <summary>
         /// Handles the Changed event of the ItemsSource control.
         /// </summary>
         /// <param name="sender">The source of the event.</param>
@@ -828,21 +999,6 @@ namespace WpfDashboardControl.Controls
             if (!(ItemsSource is ICollection<WidgetBase>))
                 throw new InvalidOperationException(
                     $"{nameof(DashboardHost)} ItemsSource binding must be an ICollection of {nameof(WidgetBase)} type");
-        }
-
-        /// <summary>
-        /// Adds or removes event handling for ItemsSource changed of this ItemsControl
-        /// </summary>
-        /// <param name="addEvent">if set to <c>true</c> [add event].</param>
-        private void ItemsSourceChangedEventSubscriber(bool addEvent = true)
-        {
-            var dependencyPropertyDescriptor =
-                DependencyPropertyDescriptor.FromProperty(ItemsSourceProperty, typeof(ItemsControl));
-
-            if (addEvent)
-                dependencyPropertyDescriptor.AddValueChanged(this, ItemsSource_Changed);
-            else
-                dependencyPropertyDescriptor.RemoveValueChanged(this, ItemsSource_Changed);
         }
 
         /// <summary>
@@ -936,144 +1092,42 @@ namespace WpfDashboardControl.Controls
             return false;
         }
 
-        /// <summary>
-        /// Sets a widgetHost to the specified rowAndColumnPlacement and recursively forces any widget already
-        /// in that space to then move down row(s) until it doesn't take up the new rowAndColumnPlacement. Then,
-        /// if widgetHostIsDraggingWidget it goes through each row and column filling empty spaces between
-        /// widgets with available sized widgets in the next rows if it can. Keeps the dashboard tight and together.
-        /// </summary>
-        /// <param name="widgetHost">The widget host.</param>
-        /// <param name="rowAndColumnPlacement">The row and column placement.</param>
-        /// <param name="ignoreAdditionalMovementHosts">The ignore additional movement hosts.</param>
-        /// <param name="widgetHostIsDraggingHost">if set to <c>true</c> [widget host is dragging host].</param>
-        private void SetAndArrange(WidgetHost widgetHost, RowAndColumn rowAndColumnPlacement,
-            ICollection<WidgetHost> ignoreAdditionalMovementHosts = null, bool widgetHostIsDraggingHost = false)
+        private void RemoveExcessGridsAndColumns(Grid grid)
         {
-            if (widgetHost == null)
-                return;
+            var rowAndColumnMax = GetMaxRowsAndColumns();
 
-            // This is a local action used for convenience it basically sets the row and column
-            // and if its the dragging host we re-arrange empty spots and move everything up
-            // that can
-            void SetThenReArrange()
+            if (grid == GridEditingBackground)
             {
-                SetRow(widgetHost, rowAndColumnPlacement.Row);
-                SetColumn(widgetHost, rowAndColumnPlacement.Column);
-
-                if (!widgetHostIsDraggingHost)
-                    return;
-
-                var arrangementNecessary = true;
-
-                //Need to check for empty spots to see if widgets in rows down from it can possible be placed in those empty spots
-                //Once there are no more available to move we set arrangementNecessary to false and we're done
-                while (arrangementNecessary)
-                    arrangementNecessary = ReArrangeFirstEmptySpot();
-            }
-
-            // Need to get the WidgetSize from the WidgetBase and find the size it needs to occupy
-            var widgetBase = (WidgetBase)widgetHost.DataContext;
-            Debug.Assert(widgetBase.RowIndex != null, "widgetBase.RowIndex != null");
-
-            var widgetSpans = GetSpans(widgetBase.WidgetSize);
-
-            // Need to get the widgets that are currently occupying the new rowAndColumnPlacement
-            // And move them down if there are any
-            var widgetsAtLocation = new List<WidgetHost>();
-
-            // If its the widgetHostIsDraggingHost then we only need to check other widgets that occupy the location
-            if (widgetHostIsDraggingHost)
-            {
-                widgetsAtLocation
-                    .AddRange(WidgetAtLocation(widgetSpans, rowAndColumnPlacement)
-                        .Where(widget => widget != widgetHost)
-                        .ToList());
-            }
-            else
-            {
-                // If we're a widget at the designated widgetHost we need to check how many spaces
-                // we're moving and check each widget that could potentially be in those spaces
-                var widgetRowMovementCount = rowAndColumnPlacement.Row - widgetBase.RowIndex + 1;
-
-                for (var i = 0; i < widgetRowMovementCount; i++)
+                // We get all the children to remove from the background grid by seeing if any of those
+                // children are in places that the main grid doesn't have content
+                var removeBorders = GridEditingBackground.Children.OfType<Border>().Where(child =>
                 {
-                    widgetsAtLocation
-                        .AddRange(WidgetAtLocation(widgetSpans, new RowAndColumn((int)widgetBase.RowIndex + i, rowAndColumnPlacement.Column))
-                            .Where(widget =>
-                            {
-                                if (widget == widgetHost)
-                                    return false;
+                    var gridRow = Grid.GetRow(child);
+                    var gridColumn = Grid.GetColumn(child);
 
-                                if (ignoreAdditionalMovementHosts == null)
-                                    return true;
+                    return gridRow >= rowAndColumnMax.Row || gridColumn >= rowAndColumnMax.Column;
+                }).ToArray();
 
-                                // We use the ignoreAdditionalMovement to prevent an already about to move
-                                // widget from being moved again prematurely
-                                return !ignoreAdditionalMovementHosts.Contains(widget);
-                            })
-                            .ToList());
-                }
+                // We have to manually remove the children from the background grid
+                for (var i = removeBorders.Length - 1; i >= 0; i--)
+                    GridEditingBackground.Children.Remove(removeBorders[i]);
             }
 
-            // Since there isn't anything there just set it directly and get out
-            if (widgetsAtLocation.Count < 1)
+            for (var i = grid.RowDefinitions.Count - 1; i >= 0; i--)
             {
-                SetThenReArrange();
-                return;
+                if (i < rowAndColumnMax.Row)
+                    break;
+
+                grid.RowDefinitions.Remove(grid.RowDefinitions[i]);
             }
 
-            // Since we have widgets at the designated location we need to move them down row(s) to make room
-            // for the widget being placed. The main dragging widget will then re-arrange once its placed
-            for (var widgetAtLocationIndex = 0; widgetAtLocationIndex < widgetsAtLocation.Count; widgetAtLocationIndex++)
+            for (var i = grid.ColumnDefinitions.Count - 1; i >= 0; i--)
             {
-                var widgetAtLocationBase = (WidgetBase)widgetsAtLocation[widgetAtLocationIndex].DataContext;
+                if (i < rowAndColumnMax.Column)
+                    break;
 
-                Debug.Assert(widgetAtLocationBase.ColumnIndex != null, "widgetAtLocationBase.ColumnIndex != null");
-
-                // Need to recursively check if any widgets that are now in the place that this widget was also get moved down to
-                // make room
-                var proposedRowAndColumn = new RowAndColumn(rowAndColumnPlacement.Row + widgetSpans.RowSpan,
-                    (int)widgetAtLocationBase.ColumnIndex);
-
-                // Get the widgets at the new location this one is moving to unless the widget is already scheduled to move later
-                var currentWidgetsAtNewLocation =
-                    WidgetAtLocation(GetSpans(widgetAtLocationBase.WidgetSize), proposedRowAndColumn)
-                        .Where(widget =>
-                        {
-                            if (widget == widgetsAtLocation[widgetAtLocationIndex])
-                                return false;
-
-                            var widgetLocationIndex = widgetsAtLocation.IndexOf(widget);
-
-                            // We check here if the potential widget is already scheduled to move and return false in that case
-                            return widgetLocationIndex >= 0 && widgetLocationIndex <= widgetAtLocationIndex;
-                        })
-                        .ToArray();
-
-                // If there are no widgets at the location then we can just set and continue forward
-                if (currentWidgetsAtNewLocation.Length < 1)
-                {
-                    SetAndArrange(widgetsAtLocation[widgetAtLocationIndex], proposedRowAndColumn, widgetsAtLocation);
-                    continue;
-                }
-
-                // We need to get the max row span or size we're dealing with to offset the change
-                var maxAdditionalRows = currentWidgetsAtNewLocation
-                    .Select(widget =>
-                    {
-                        var atLocationBase = (WidgetBase)widget.DataContext;
-                        return GetSpans(atLocationBase.WidgetSize).RowSpan;
-                    })
-                    .Max();
-
-                // Recursively check the next widget movement and if additional widgets need to move
-                SetAndArrange(widgetsAtLocation[widgetAtLocationIndex],
-                    new RowAndColumn(proposedRowAndColumn.Row + maxAdditionalRows, proposedRowAndColumn.Column),
-                    widgetsAtLocation);
+                grid.ColumnDefinitions.Remove(grid.ColumnDefinitions[i]);
             }
-
-            // All done, lets set the last one in the recursion
-            SetThenReArrange();
         }
 
         /// <summary>
@@ -1160,7 +1214,7 @@ namespace WpfDashboardControl.Controls
             return _widgetHosts
                 .Where(host =>
                 {
-                    var widgetBase = (WidgetBase) host.DataContext;
+                    var widgetBase = (WidgetBase)host.DataContext;
                     var widgetSpans = GetSpans(widgetBase.WidgetSize);
 
                     // If there is a specific widget there then return true
