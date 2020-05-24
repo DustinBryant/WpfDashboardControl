@@ -1,7 +1,7 @@
 ﻿using System.Windows;
 using System.Windows.Media;
 
-namespace WpfDashboardControl
+namespace WpfDashboardControl.Models
 {
     /// <summary>
     /// Provides extension methods for DependencyObject's

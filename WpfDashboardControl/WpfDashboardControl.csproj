@@ -59,8 +59,9 @@
     <Compile Include="Controls\WidgetHost.xaml.cs">
       <DependentUpon>WidgetHost.xaml</DependentUpon>
     </Compile>
-    <Compile Include="DependencyObjectExtensions.cs" />
+    <Compile Include="Models\DependencyObjectExtensions.cs" />
     <Compile Include="Models\DragEvent.cs" />
+    <Compile Include="Models\PropertyChangeNotifier.cs" />
     <Compile Include="Models\RelayCommand.cs" />
     <Compile Include="Models\ViewModelBase.cs" />
     <Compile Include="Models\WidgetBase.cs" />
