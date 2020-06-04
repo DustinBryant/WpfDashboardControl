@@ -5,6 +5,10 @@ VisualStudioVersion = 16.0.30011.22
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WpfDashboardControl", "WpfDashboardControl\WpfDashboardControl.csproj", "{8E2E6EB4-4995-4792-B1CB-E0427BA4F9D6}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Infrastructure", "Infrastructure\Infrastructure.csproj", "{34A3425E-C60D-4287-AB1C-15ECF4A01352}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Widgets", "Widgets\Widgets.csproj", "{35A81C60-2F62-4D9D-94C1-276E9DC74519}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -15,6 +19,14 @@ Global
 		{8E2E6EB4-4995-4792-B1CB-E0427BA4F9D6}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{8E2E6EB4-4995-4792-B1CB-E0427BA4F9D6}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{8E2E6EB4-4995-4792-B1CB-E0427BA4F9D6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{34A3425E-C60D-4287-AB1C-15ECF4A01352}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{34A3425E-C60D-4287-AB1C-15ECF4A01352}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{34A3425E-C60D-4287-AB1C-15ECF4A01352}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{34A3425E-C60D-4287-AB1C-15ECF4A01352}.Release|Any CPU.Build.0 = Release|Any CPU
+		{35A81C60-2F62-4D9D-94C1-276E9DC74519}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{35A81C60-2F62-4D9D-94C1-276E9DC74519}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{35A81C60-2F62-4D9D-94C1-276E9DC74519}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{35A81C60-2F62-4D9D-94C1-276E9DC74519}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

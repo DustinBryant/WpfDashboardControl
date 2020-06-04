@@ -1,0 +1,42 @@
+﻿<!--  This application utilizes viewmodel first and is supported with DataTemplates. If you are to use DataTemplates ensure you load the ResourceDictionary into the resources of the App.xaml  -->
+<ResourceDictionary
+    xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+    xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+    xmlns:widgets="clr-namespace:Widgets">
+
+    <DataTemplate DataType="{x:Type widgets:OneByOneViewModel}">
+        <widgets:OneByOneView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:OneByTwoViewModel}">
+        <widgets:OneByTwoView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:OneByThreeViewModel}">
+        <widgets:OneByThreeView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:TwoByOneViewModel}">
+        <widgets:TwoByOneView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:TwoByTwoViewModel}">
+        <widgets:TwoByTwoView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:TwoByThreeViewModel}">
+        <widgets:TwoByThreeView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:ThreeByOneViewModel}">
+        <widgets:ThreeByOneView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:ThreeByTwoViewModel}">
+        <widgets:ThreeByTwoView />
+    </DataTemplate>
+
+    <DataTemplate DataType="{x:Type widgets:ThreeByThreeViewModel}">
+        <widgets:ThreeByThreeView />
+    </DataTemplate>
+</ResourceDictionary>

@@ -52,47 +52,65 @@
       <Generator>MSBuild:Compile</Generator>
       <SubType>Designer</SubType>
     </ApplicationDefinition>
-    <Compile Include="Controls\DashboardHost.xaml.cs">
+    <Compile Include="Dashboards\DashboardConfigurationType.cs" />
+    <Compile Include="Dashboards\DashboardNameValidResponse.cs" />
+    <Compile Include="Dashboards\DashboardSettingsPromptView.xaml.cs">
+      <DependentUpon>DashboardSettingsPromptView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dashboards\DashboardSettingsPromptViewModel.cs" />
+    <Compile Include="Dashboards\DashboardsView.xaml.cs">
+      <DependentUpon>DashboardsView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Dashboards\IDashboardConfigurationHandler.cs" />
+    <Compile Include="Dashboards\Widget.cs" />
+    <Compile Include="Resources\Converters\DashboardSelectorIsCheckedConverter.cs" />
+    <Compile Include="Resources\Converters\DelayedMultiBindingExtension.cs" />
+    <Compile Include="Resources\Converters\InvertBoolToVisibilityConverter.cs" />
+    <Compile Include="Resources\Converters\InvertNullToVisibilityConverter.cs" />
+    <Compile Include="Resources\Converters\NullToVisibilityConverter.cs" />
+    <Compile Include="Resources\DashboardControl\DashboardHost.xaml.cs">
       <DependentUpon>DashboardHost.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Controls\DragAdorner.cs" />
-    <Compile Include="Controls\WidgetHost.xaml.cs">
+    <Compile Include="Resources\DashboardControl\DragAdorner.cs" />
+    <Compile Include="Resources\DashboardControl\Models\WidgetHostData.cs" />
+    <Compile Include="Resources\DashboardControl\TempWidgetHost.xaml.cs">
+      <DependentUpon>TempWidgetHost.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="Resources\DashboardControl\WidgetHost.xaml.cs">
       <DependentUpon>WidgetHost.xaml</DependentUpon>
     </Compile>
-    <Compile Include="Models\DependencyObjectExtensions.cs" />
-    <Compile Include="Models\DragEvent.cs" />
-    <Compile Include="Models\PropertyChangeNotifier.cs" />
-    <Compile Include="Models\RelayCommand.cs" />
-    <Compile Include="Models\ViewModelBase.cs" />
-    <Compile Include="Models\WidgetBase.cs" />
-    <Compile Include="Models\WidgetSize.cs" />
-    <Compile Include="Widgets\OneByOneView.xaml.cs">
-      <DependentUpon>OneByOneView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Widgets\OneByOneViewModel.cs" />
-    <Compile Include="Widgets\OneByTwoView.xaml.cs">
-      <DependentUpon>OneByTwoView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Widgets\OneByTwoViewModel.cs" />
-    <Compile Include="Models\RowAndColumn.cs" />
-    <Compile Include="Models\RowSpanColumnSpan.cs" />
-    <Compile Include="Widgets\TwoByOneView.xaml.cs">
-      <DependentUpon>TwoByOneView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Widgets\TwoByOneViewModel.cs" />
-    <Compile Include="Widgets\TwoByTwoView.xaml.cs">
-      <DependentUpon>TwoByTwoView.xaml</DependentUpon>
-    </Compile>
-    <Compile Include="Widgets\TwoByTwoViewModel.cs" />
-    <Page Include="Controls\DashboardHost.xaml">
+    <Compile Include="Dashboards\DashboardsViewModel.cs" />
+    <Compile Include="Resources\DashboardControl\Models\DependencyObjectExtensions.cs" />
+    <Compile Include="Resources\DashboardControl\Models\DragEvent.cs" />
+    <Compile Include="Resources\DashboardControl\PropertyChangeNotifier.cs" />
+    <Compile Include="Resources\DashboardControl\Models\RowAndColumn.cs" />
+    <Compile Include="Resources\DashboardControl\Models\RowSpanColumnSpan.cs" />
+    <Compile Include="Resources\DashboardModel.cs" />
+    <Page Include="Dashboards\DashboardSettingsPromptView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="Controls\WidgetHost.xaml">
+    <Page Include="Dashboards\DashboardsView.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
-    <Page Include="DataTemplates.xaml">
+    <Page Include="Resources\CustomStyles.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\DataTemplates.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\DashboardControl\DashboardHost.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\DashboardControl\TempWidgetHost.xaml">
+      <SubType>Designer</SubType>
+      <Generator>MSBuild:Compile</Generator>
+    </Page>
+    <Page Include="Resources\DashboardControl\WidgetHost.xaml">
       <SubType>Designer</SubType>
       <Generator>MSBuild:Compile</Generator>
     </Page>
@@ -108,22 +126,6 @@
       <DependentUpon>MainWindow.xaml</DependentUpon>
       <SubType>Code</SubType>
     </Compile>
-    <Page Include="Widgets\OneByOneView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Widgets\OneByTwoView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Widgets\TwoByOneView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
-    <Page Include="Widgets\TwoByTwoView.xaml">
-      <SubType>Designer</SubType>
-      <Generator>MSBuild:Compile</Generator>
-    </Page>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="MainWindowViewModel.cs" />
@@ -151,6 +153,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj">
+      <Project>{34a3425e-c60d-4287-ab1c-15ecf4a01352}</Project>
+      <Name>Infrastructure</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\Widgets\Widgets.csproj">
+      <Project>{35a81c60-2f62-4d9d-94c1-276e9dc74519}</Project>
+      <Name>Widgets</Name>
+    </ProjectReference>
   </ItemGroup>
   <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

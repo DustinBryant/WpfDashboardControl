@@ -18,7 +18,7 @@ I have heavily documented almost every aspect of this control so you can underst
 
 # The UI
 
-Once you're running the WpfDashboardControl, you can't do much until you put it in **Edit** mode. You can put it into **Edit** mode by clicking the **Edit** button at the top of the window. Once you're in **Edit** mode, you can add various widgets by using the buttons at the bottom. Also, while in **Edit** mode, you can move widgets around by drag and drop. Once you are done, you can hit the **Done Editing** button.
+Once you're running the WpfDashboardControl, you can't do much until you put it in **Edit** mode. You can put it into **Edit** mode by clicking the **Edit** button at the top of the window. Once you're in **Edit** mode, you can add various widgets by using the buttons located on the right. Also, while in **Edit** mode, you can move widgets around by drag and drop. Once you are done, you can hit the **Done Editing** button.
 
 As you drag around widgets you'll notice other widgets will begin to interact with the dragging widget by moving down/up in rows. Again, this was modelled off of the Azure DevOps Server Dashboards where it tries to fill in empty spaces.
 

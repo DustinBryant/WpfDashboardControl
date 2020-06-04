@@ -1,0 +1,130 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{35A81C60-2F62-4D9D-94C1-276E9DC74519}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>Widgets</RootNamespace>
+    <AssemblyName>Widgets</AssemblyName>
+    <TargetFrameworkVersion>v4.6</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+    <Deterministic>true</Deterministic>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="PresentationCore" />
+    <Reference Include="PresentationFramework" />
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+    <Reference Include="System.Xaml" />
+    <Reference Include="System.Xml" />
+    <Reference Include="WindowsBase" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="OneByOneView.xaml.cs">
+      <DependentUpon>OneByOneView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OneByOneViewModel.cs" />
+    <Compile Include="OneByThreeView.xaml.cs">
+      <DependentUpon>OneByThreeView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OneByThreeViewModel.cs" />
+    <Compile Include="OneByTwoView.xaml.cs">
+      <DependentUpon>OneByTwoView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="OneByTwoViewModel.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="ThreeByOneView.xaml.cs">
+      <DependentUpon>ThreeByOneView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ThreeByOneViewModel.cs" />
+    <Compile Include="ThreeByThreeView.xaml.cs">
+      <DependentUpon>ThreeByThreeView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ThreeByThreeViewModel.cs" />
+    <Compile Include="ThreeByTwoView.xaml.cs">
+      <DependentUpon>ThreeByTwoView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="ThreeByTwoViewModel.cs" />
+    <Compile Include="TwoByOneView.xaml.cs">
+      <DependentUpon>TwoByOneView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="TwoByOneViewModel.cs" />
+    <Compile Include="TwoByThreeView.xaml.cs">
+      <DependentUpon>TwoByThreeView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="TwoByThreeViewModel.cs" />
+    <Compile Include="TwoByTwoView.xaml.cs">
+      <DependentUpon>TwoByTwoView.xaml</DependentUpon>
+    </Compile>
+    <Compile Include="TwoByTwoViewModel.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <Page Include="DataTemplates.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OneByOneView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OneByThreeView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="OneByTwoView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ThreeByOneView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ThreeByThreeView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="ThreeByTwoView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="TwoByOneView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="TwoByThreeView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+    <Page Include="TwoByTwoView.xaml">
+      <Generator>MSBuild:Compile</Generator>
+      <SubType>Designer</SubType>
+    </Page>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Infrastructure\Infrastructure.csproj">
+      <Project>{34a3425e-c60d-4287-ab1c-15ecf4a01352}</Project>
+      <Name>Infrastructure</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+</Project>
