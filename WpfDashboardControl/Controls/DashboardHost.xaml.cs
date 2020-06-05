@@ -165,7 +165,7 @@ namespace WpfDashboardControl.Controls
         {
             base.ClearContainerForItemOverride(element, item);
 
-            if (!(element is WidgetHost widgetHost))
+            if (!(element is WidgetHost widgetHost) || !EditMode)
                 return;
 
             widgetHost.DragStarted -= WidgetHost_DragStarted;
