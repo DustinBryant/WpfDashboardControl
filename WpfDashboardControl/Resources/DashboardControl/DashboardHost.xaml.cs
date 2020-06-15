@@ -148,7 +148,8 @@ namespace WpfDashboardControl.Resources.DashboardControl
             _widgetHostsData = _widgetHostsData.Where(widgetData => widgetData.HostIndex != widgetHost.HostIndex)
                 .ToList();
 
-            FixArrangements();
+			if (EditMode)
+				FixArrangements();
         }
 
         /// <summary>
