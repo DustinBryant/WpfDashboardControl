@@ -103,8 +103,8 @@ namespace WpfDashboardControl.Resources.DashboardControl
         {
             Unloaded -= WidgetHost_Unloaded;
 
-            PreviewMouseLeftButtonDown += Host_MouseLeftButtonDown;
-            PreviewMouseMove += Host_MouseMove;
+            PreviewMouseLeftButtonDown -= Host_MouseLeftButtonDown;
+            PreviewMouseMove -= Host_MouseMove;
         }
 
         #endregion Private Methods
